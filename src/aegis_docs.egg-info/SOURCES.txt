@@ -2,11 +2,15 @@ pyproject.toml
 src/README.md
 src/aegis/__init__.py
 src/aegis/app.py
+src/aegis/audit.py
+src/aegis/auth.py
 src/aegis/bench_tokens.py
 src/aegis/cli.py
 src/aegis/index.py
 src/aegis/ingest.py
 src/aegis/judge.py
+src/aegis/logger.py
+src/aegis/provenance.py
 src/aegis/query_rewriter.py
 src/aegis/security.py
 src/aegis_docs.egg-info/PKG-INFO

@@ -4,3 +4,4 @@ vault/
 *.pyc
 .DS_Store
 *.log
+*.pem          # signing keys — never commit

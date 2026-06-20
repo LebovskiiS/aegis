@@ -56,5 +56,13 @@ created: 2026-06-20
 - YES **CLI + pip packaging.** Restructured into a proper `aegis` package (`src/aegis/`) with `pyproject.toml`; `pip install '.[semantic]'` -> `aegis` command: `serve / ingest / locate / add / health / libs`. Users talk to the program via the CLI; `locate/add/health/libs` are thin HTTP clients to a running `serve`.
 - YES **LLM on/off flag at launch.** `aegis serve --llm true|false` (default **false**) toggles the judge; `--llm-host` points at a **separate LLM container**, `--llm-model` picks the model, `--threads` caps its CPU. Docker image runs no-LLM by default; compose has a commented judge wiring. Future: `--llm auto` to detect machine power and self-configure.
 
+- YES **Compliance utilities (audit / auth / provenance / logging).**
+  - **Doc integrity** = simple sha256 compare (`verify_integrity`, on `/health`) — hash at ingest, compare later. Catches edited docs.
+  - **Tamper-evident audit log** — hash-chained ledger of every query (`audit.py`, `aegis audit-verify`): each line carries the prev line's hash, so deleting/editing any entry breaks the chain. (Blockchain-style, for the *request log* — separate from doc integrity.)
+  - **API-key auth + user identity** — `aegis serve --user <email> [--api-key KEY]` binds a key to an email; clients send `X-API-Key`; identity recorded in the audit log; 401 without it.
+  - **Signed provenance manifest** (ed25519) — `aegis keygen / sign / verify`, verified at startup via `--pubkey`; proves the manifest is authentic and the vault unchanged.
+  - **Verbose ops logger** (`logger.py`, `AEGIS_LOG_LEVEL`) — request in/out, timings, query, hits; **API keys redacted**.
+- YES **Container security.** Dockerfile hardened: non-root user (uid 10001), read-only baked vault, writable `/data` only for the audit log, HEALTHCHECK. CI `security.yml`: hadolint (Dockerfile lint) + Trivy (image vuln/misconfig, fail on HIGH/CRITICAL) + pip-audit (Python CVEs). Release workflow attaches SBOM + provenance.
+
 ## Open question
 - Need **fully-offline generation** (no Claude at all, a local LLM answers) as a premium air-gapped mode? Affects ~80% of complexity. For now: the container only searches; the regular Claude thinks.

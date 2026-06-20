@@ -1,0 +1,35 @@
+name: security
+
+# Container + dependency security scanning on every push / PR.
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint Dockerfile (hadolint)
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          failure-threshold: error
+
+      - name: Build image
+        run: docker build -t aegis-docs:scan .
+
+      - name: Scan image (Trivy — vulns + misconfig)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: aegis-docs:scan
+          format: table
+          exit-code: "1"
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+
+      - name: Audit Python deps (pip-audit)
+        run: pipx run pip-audit --strict || true

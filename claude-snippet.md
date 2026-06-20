@@ -17,6 +17,7 @@ curl -s -X POST http://localhost:8080/locate \
 - `query`: a short natural-language phrase (~3-12 words), ONE concept. Typos/phrasing are
   tolerated (semantic search). Max 500 chars.
 - `lib` / `version`: optional; only `[A-Za-z0-9._-]` (validated, else HTTP 422).
+- **Auth:** if the service requires it, add `-H 'X-API-Key: <key>'` to every request (else HTTP 401).
 
 Response:
 ```json

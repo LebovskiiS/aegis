@@ -13,6 +13,7 @@ dependencies = [
     "uvicorn[standard]",
     "httpx",
     "pydantic>=2",
+    "cryptography",          # ed25519 signing of the provenance manifest
 ]
 
 [project.optional-dependencies]
