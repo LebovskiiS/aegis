@@ -31,7 +31,10 @@ from pydantic import BaseModel, Field, ValidationError
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
 REWRITE_MODEL = os.getenv("AEGIS_REWRITE_MODEL", "qwen2.5:3b-instruct")
 REWRITE_ENABLED = os.getenv("AEGIS_REWRITE", "1") not in ("0", "false", "False")
-REWRITE_TIMEOUT = float(os.getenv("AEGIS_REWRITE_TIMEOUT", "4.0"))
+REWRITE_TIMEOUT = float(os.getenv("AEGIS_REWRITE_TIMEOUT", "8.0"))
+# Resource caps for the model itself (so it cannot hold RAM or peg the CPU):
+OLLAMA_KEEP_ALIVE = os.getenv("AEGIS_OLLAMA_KEEP_ALIVE", "0")  # unload right after each call -> free RAM
+OLLAMA_THREADS = int(os.getenv("AEGIS_OLLAMA_THREADS", "4"))   # cap CPU threads -> avoid lag
 
 
 class QueryPlan(BaseModel):
@@ -85,7 +88,8 @@ def _call_ollama(prompt: str) -> str:
             "prompt": prompt,
             "format": "json",  # force JSON output from Ollama
             "stream": False,
-            "options": {"temperature": 0},
+            "keep_alive": OLLAMA_KEEP_ALIVE,
+            "options": {"temperature": 0, "num_thread": OLLAMA_THREADS},
         },
         timeout=REWRITE_TIMEOUT,
     )
