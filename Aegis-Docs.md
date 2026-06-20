@@ -22,10 +22,13 @@ Claude already sees your code but does NOT reliably know the current API of your
 - [[03-architecture]] — who does what, data flow, the two containers
 - [[04-uniqueness-and-compliance]] — trust package, why not PHI
 - [[05-features-and-decisions]] — feature list + decision log
-- [[06-mvp-and-next-steps]] — what we build first
+- [[06-mvp-and-next-steps]] — status & what's next
+- [[07-verification-and-proof]] — verified results + token proof
 
 ## Status
-🟡 **Concept worked out; MVP core built & tested (BM25 path).** Next: [[06-mvp-and-next-steps]].
+🟢 **MVP + compliance built and verified end-to-end** on real FastAPI / Kubernetes docs — see [[07-verification-and-proof]].
+
+**Proof:** snippet ~32× / pointer ~321× fewer tokens than reading the page; search = **0 agent tokens**; integrity via sha256 + ed25519 signatures + tamper-evident audit log.
 
 ## Key takeaway
 The technology (local RAG over docs) is **commodity, not defensible.** Defensible: **air-gapped packaging + verifiability + compliance story + HIPAA/SOC2 expertise.** The barrier is trust, not code. See [[04-uniqueness-and-compliance]].

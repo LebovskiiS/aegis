@@ -1,49 +1,36 @@
 ---
 name: aegis-docs-mvp
-description: MVP scope and next steps
+description: What's built and what's next
 tags: [project, mvp, roadmap]
 created: 2026-06-20
 ---
 
-# MVP and next steps
+# Status & next steps
 
 ← [[Aegis-Docs]]
 
-## Status: core built & tested
-End-to-end works (ingest -> index -> rewriter -> search -> pointer), in `src/`.
-- OK `/health`, `/libs`, validation (422 on empty), `/locate` returns a pointer
-- OK input tolerance: UPPERCASE + lib typo (`FASTPI`->`fastapi`) resolved
-- LIMITATION BM25-only right now (`vectors:false`, `rewritten:false`): in-query typos and pure-intent queries can miss — exactly what the vector layer + LLM rewriter fix when enabled.
+## Built & verified (done)
+- **Core**: ingest → vault (markdown) → hybrid index (BM25 + embeddings, cosine rank) →
+  `/locate` pointer + snippet. Verified on real FastAPI + Kubernetes docs ([[07-verification-and-proof]]).
+- **CLI + pip package** (`aegis`): serve / ingest / locate / add / health / libs / init /
+  keygen / sign / verify / audit-verify / audit-ship / apikey.
+- **Config file** `aegis.yaml` (`aegis init`, `serve --config`) — every setting in one place.
+- **LLM judge** optional (`--llm`), fail-safe; works on 7b+, OFF by default.
+- **Compliance**: sha256 doc integrity, hash-chain audit log, ed25519 signed manifest,
+  API-key/user auth, verbose redacted logger.
+- **Container security**: hardened Dockerfile (non-root, read-only vault, healthcheck);
+  CI hadolint + Trivy + pip-audit.
+- **Distribution**: multi-arch image (amd64 + arm64), GHCR release workflow with SBOM;
+  cross-platform (pip + Docker, all OS).
 
-## MVP scope
-```
-docker run aegis-docs --stack "fastapi==0.115" -v ./myproject:/workspace
-```
-1. fetch FastAPI docs (priority: llms.txt) -> hash -> vault (markdown)
-2. build index (BM25 + vectors)
-3. serve HTTP `/locate`
-4. Claude calls it via CLAUDE.md instruction
+## Next
+- **Publish**: PyPI (`pip install aegis-docs`) + push the image to the registry (currently local only).
+- **Two-container split** (indexer + server) for production — code is already separated.
+- **LLM judge on dedicated hardware** (7b+), wired via `--llm-host`.
+- **Trust-package auto-gen** — data-flow + SBOM + "no-PHI" attestation in one command.
+- **`update`/reindex** that re-fetches per-lib sources (needs ingest to track source URLs).
+- (open) **fully-offline generation** with a local model, for true no-internet environments.
 
-### Components
-- [x] `ingest.py` (fetch + chunk + hash + meta)
-- [x] `index.py` (FTS5 BM25 + optional fastembed vectors + RRF + lib resolve)
-- [x] `app.py` (FastAPI `/health`, `/libs`, `/locate`)
-- [x] `query_rewriter.py` (Ollama, fail-safe)
-- [ ] `Dockerfile` (two stages: build-time ingest, runtime offline)
-- [ ] real doc URLs (replace bundled sample)
-- [ ] enable vectors (`pip install fastembed numpy`)
-
-### What we test
-- which pointer comes back for a real query
-- token cost vs plain RAG
-- whether the saving is real on real cases
-
-## Next (after MVP validation)
-- v2: auto-read lockfile + watch
-- trust package (auto-gen) — see [[04-uniqueness-and-compliance]]
-- two containers + internal mirror — see [[03-architecture]]
-- (open) fully-offline generation with a local LLM
-
-## Decision before more code
-One question drives 80% of complexity: **search-only (Claude thinks)** or **fully-offline (local LLM answers)**?
--> For MVP: **search-only.** Light HTTP service, assembles fast.
+## Key decision
+Search-only (the agent thinks) is the default — light, fast, 0 search tokens. The full LLM is
+opt-in for separate hardware. See [[05-features-and-decisions]].
