@@ -3,6 +3,13 @@ uvicorn[standard]
 httpx
 pydantic>=2
 cryptography
+pyyaml
+
+[gcs]
+google-cloud-storage
+
+[s3]
+boto3
 
 [semantic]
 fastembed

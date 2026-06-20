@@ -9,9 +9,14 @@ Requires-Dist: uvicorn[standard]
 Requires-Dist: httpx
 Requires-Dist: pydantic>=2
 Requires-Dist: cryptography
+Requires-Dist: pyyaml
 Provides-Extra: semantic
 Requires-Dist: fastembed; extra == "semantic"
 Requires-Dist: numpy; extra == "semantic"
+Provides-Extra: s3
+Requires-Dist: boto3; extra == "s3"
+Provides-Extra: gcs
+Requires-Dist: google-cloud-storage; extra == "gcs"
 
 # Aegis Docs — core (MVP)
 

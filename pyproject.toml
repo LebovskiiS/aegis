@@ -14,11 +14,14 @@ dependencies = [
     "httpx",
     "pydantic>=2",
     "cryptography",          # ed25519 signing of the provenance manifest
+    "pyyaml",                # aegis.yaml config
 ]
 
 [project.optional-dependencies]
 # Semantic search layer (recommended). Without it the service runs BM25-only.
 semantic = ["fastembed", "numpy"]
+s3 = ["boto3"]                       # ship audit logs to S3
+gcs = ["google-cloud-storage"]       # ship audit logs to GCS
 
 [project.scripts]
 aegis = "aegis.cli:main"

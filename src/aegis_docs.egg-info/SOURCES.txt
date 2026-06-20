@@ -1,11 +1,14 @@
+README.md
 pyproject.toml
 src/README.md
 src/aegis/__init__.py
 src/aegis/app.py
 src/aegis/audit.py
+src/aegis/audit_sink.py
 src/aegis/auth.py
 src/aegis/bench_tokens.py
 src/aegis/cli.py
+src/aegis/config.py
 src/aegis/index.py
 src/aegis/ingest.py
 src/aegis/judge.py

@@ -1,22 +1,25 @@
 """Aegis Docs CLI.
 
-Service:
-  aegis serve  [--port 8080] [--llm true|false] [--llm-host URL] [--threads N]
-               [--stack "fastapi==0.115"] [--vault DIR] [--offline]
-               [--api-keys "claude:KEY,ci:KEY"] [--pubkey aegis_pub.pem] [--log-level DEBUG]
-  aegis ingest "fastapi==0.115" [--vault DIR]
+Setup:
+  aegis init                                   # write an aegis.yaml config template
+  aegis serve --config aegis.yaml              # run with all settings from the file
+  aegis ingest "fastapi==0.115" [--vault DIR]  # fetch + index docs
+
+Service flags (override the config):
+  aegis serve [--port N] [--llm true|false] [--llm-host URL] [--threads N]
+              [--vault DIR] [--offline] [--user EMAIL] [--api-key KEY]
+              [--pubkey aegis_pub.pem] [--log-level DEBUG]
 
 Client (talks to a running service over HTTP):
   aegis locate "how to stream a response" [--lib fastapi] [--url ...] [--api-key KEY]
-  aegis add fastapi [--version 0.115] [--url ...] [--api-key KEY]
+  aegis add fastapi [--version 0.115] [--api-key KEY]
   aegis health | aegis libs   [--url ...]
 
 Compliance:
-  aegis keygen        [--priv aegis_priv.pem] [--pub aegis_pub.pem]
-  aegis sign          [--priv aegis_priv.pem] [--vault DIR]   # sign the vault manifest
-  aegis verify        [--pub aegis_pub.pem] [--vault DIR]      # verify manifest + vault
-  aegis audit-verify  [--log audit.log]                        # verify the hash-chain
-  aegis apikey                                                 # generate a random API key
+  aegis keygen / sign / verify          # ed25519 signed manifest
+  aegis audit-verify [--log audit.log]  # check the hash-chain
+  aegis audit-ship  [--config ...]      # ship the audit log to a bucket
+  aegis apikey                          # generate a random API key
 """
 from __future__ import annotations
 
@@ -34,8 +37,16 @@ def _bool(v: str) -> bool:
 
 
 def _serve(a: argparse.Namespace) -> None:
-    os.environ.setdefault("AEGIS_VAULT", a.vault)
-    os.environ["AEGIS_JUDGE"] = "1" if a.llm else "0"
+    if a.config:
+        from aegis import config
+
+        config.apply(a.config)
+    # CLI flags override the config (only when explicitly provided)
+    if a.vault:
+        os.environ["AEGIS_VAULT"] = a.vault
+    os.environ.setdefault("AEGIS_VAULT", "vault")
+    if a.llm is not None:
+        os.environ["AEGIS_JUDGE"] = "1" if a.llm else "0"
     if a.llm_host:
         os.environ["OLLAMA_HOST"] = a.llm_host
     if a.llm_model:
@@ -57,11 +68,25 @@ def _serve(a: argparse.Namespace) -> None:
         os.environ["AEGIS_PUBKEY"] = a.pubkey
     if a.log_level:
         os.environ["AEGIS_LOG_LEVEL"] = a.log_level
+
+    host = a.host or os.getenv("AEGIS_HOST", "127.0.0.1")
+    port = a.port or int(os.getenv("AEGIS_PORT", "8080"))
     import uvicorn
 
-    mode = f"LLM judge ON ({os.environ.get('AEGIS_JUDGE_MODEL', 'default')})" if a.llm else "no LLM (cosine + agent)"
-    print(f"aegis serve -> http://{a.host}:{a.port}  [{mode}]")
-    uvicorn.run("aegis.app:app", host=a.host, port=a.port, log_level="warning")
+    judge = os.environ.get("AEGIS_JUDGE", "0") not in ("0", "false", "False")
+    mode = f"LLM judge ON ({os.environ.get('AEGIS_JUDGE_MODEL', 'default')})" if judge else "no LLM (cosine + agent)"
+    print(f"aegis serve -> http://{host}:{port}  [{mode}]")
+    uvicorn.run("aegis.app:app", host=host, port=port, log_level="warning")
+
+
+def _init(a: argparse.Namespace) -> None:
+    from aegis import config
+
+    out = Path(a.out)
+    if out.exists() and not a.force:
+        raise SystemExit(f"{out} already exists (use --force to overwrite)")
+    out.write_text(config.EXAMPLE_CONFIG, encoding="utf-8")
+    print(f"wrote {out}. Edit it, then: aegis serve --config {out}")
 
 
 def _ingest(a: argparse.Namespace) -> None:
@@ -102,15 +127,14 @@ def _keygen(a):
     from aegis import provenance
 
     provenance.keygen(Path(a.priv), Path(a.pub))
-    print(f"wrote private key -> {a.priv} (keep secret!)\nwrote public key  -> {a.pub}")
+    print(f"private key -> {a.priv} (keep secret!)\npublic key  -> {a.pub}")
 
 
 def _sign(a):
     os.environ.setdefault("AEGIS_VAULT", a.vault)
     from aegis import provenance
 
-    dest = provenance.sign(Path(a.priv))
-    print(f"signed manifest -> {dest}")
+    print(f"signed manifest -> {provenance.sign(Path(a.priv))}")
 
 
 def _verify(a):
@@ -131,6 +155,16 @@ def _audit_verify(a):
     raise SystemExit(0 if ok else 1)
 
 
+def _audit_ship(a):
+    if a.config:
+        from aegis import config
+
+        config.apply(a.config)
+    from aegis import audit_sink
+
+    print(audit_sink.ship())
+
+
 def _apikey(a):
     print(secrets.token_urlsafe(32))
 
@@ -139,15 +173,21 @@ def main() -> None:
     p = argparse.ArgumentParser(prog="aegis", description="Aegis Docs — local docs for AI agents")
     sub = p.add_subparsers(dest="cmd", required=True)
 
+    ini = sub.add_parser("init", help="write an aegis.yaml config template")
+    ini.add_argument("--out", default="aegis.yaml")
+    ini.add_argument("--force", action="store_true")
+    ini.set_defaults(func=_init)
+
     s = sub.add_parser("serve", help="run the HTTP service")
-    s.add_argument("--host", default="127.0.0.1")
-    s.add_argument("--port", type=int, default=8080)
-    s.add_argument("--llm", type=_bool, default=False, metavar="true|false", help="enable the LLM judge")
+    s.add_argument("--config", default=None, help="path to aegis.yaml")
+    s.add_argument("--host", default=None)
+    s.add_argument("--port", type=int, default=None)
+    s.add_argument("--llm", type=_bool, default=None, metavar="true|false", help="enable the LLM judge")
     s.add_argument("--llm-host", default=None, help="external Ollama URL (separate LLM container)")
     s.add_argument("--llm-model", default=None)
     s.add_argument("--threads", type=int, default=None, help="cap model CPU threads")
     s.add_argument("--stack", default=None, help="index this stack on first start")
-    s.add_argument("--vault", default="vault")
+    s.add_argument("--vault", default=None)
     s.add_argument("--offline", action="store_true", help="forbid network at runtime (air-gap)")
     s.add_argument("--user", default=None, help="operator email -> bound to an API key; logged as identity")
     s.add_argument("--api-key", default=None, help="explicit API key for --user (else auto-generated)")
@@ -199,6 +239,10 @@ def main() -> None:
     av = sub.add_parser("audit-verify", help="verify the audit log hash-chain")
     av.add_argument("--log", default="audit.log")
     av.set_defaults(func=_audit_verify)
+
+    sh = sub.add_parser("audit-ship", help="ship the audit log to a bucket")
+    sh.add_argument("--config", default=None, help="path to aegis.yaml (for the sink config)")
+    sh.set_defaults(func=_audit_ship)
 
     ak = sub.add_parser("apikey", help="generate a random API key")
     ak.set_defaults(func=_apikey)

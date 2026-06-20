@@ -1,0 +1,47 @@
+# Aegis Docs configuration. Load it with:  aegis serve --config aegis.yaml
+# Generate this file with:                 aegis init
+# Precedence: defaults < this file < explicit CLI flags.
+
+server:
+  host: 127.0.0.1          # bind address; use 0.0.0.0 inside a container
+  port: 8080
+  vault: ./vault           # where indexed docs live
+  offline: false           # true = forbid all network at runtime (air-gap)
+  log_level: INFO          # DEBUG | INFO | WARNING (verbose ops logging)
+
+# Libraries to fetch + index on first start (if the vault is empty).
+stack:
+  - "fastapi==0.115"
+
+search:
+  top_k: 3                 # how many results /locate returns
+  snippet_max: 1500        # max chars of doc text per result
+  min_score: 0.35          # below this cosine score -> found:false
+
+# Optional LLM relevance judge. OFF by default (small models grade poorly; use 7b+).
+# Best run as a SEPARATE container on real hardware, not a laptop.
+llm:
+  enabled: false
+  host: http://localhost:11434     # Ollama endpoint (a separate LLM container)
+  model: qwen2.5:7b-instruct
+  threads: 2               # cap CPU threads so it cannot lag the host
+  keep_alive: "0"          # unload the model right after each call -> free RAM
+  min_grade: 4             # below this 1-10 grade -> found:false
+
+# Access control. If user+api_key are set, clients must send X-API-Key (else 401).
+auth:
+  user: ""                 # operator email -> recorded as the audit identity
+  api_key: ""              # the secret clients present (generate: aegis apikey)
+  # api_keys: "claude:KEY,ci:KEY"   # advanced: multiple keys
+
+# Verify the signed provenance manifest at startup (see: aegis keygen / sign).
+provenance:
+  pubkey: ""               # path to the public key, e.g. aegis_pub.pem
+
+# Tamper-evident audit log + optional shipping to long-term storage.
+audit:
+  log: ./audit.log
+  sink:
+    type: none             # none | local | s3 | gcs
+    bucket: ""             # bucket name (or a directory for type: local)
+    prefix: "aegis/audit/"
