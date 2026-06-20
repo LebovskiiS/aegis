@@ -1,25 +1,23 @@
 # syntax=docker/dockerfile:1
-
-# ---------- Stage 1: builder (HAS internet) — fetch docs + build the vault ----------
-FROM python:3.12-slim AS builder
-WORKDIR /app
-COPY src/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY src/ ./src/
-# Stack is baked at build time. Override: docker build --build-arg STACK="fastapi==0.115, ..."
+# Build has internet (installs deps, bakes the embedding model, fetches docs).
+# At runtime the container needs NO network: everything is baked in.
 ARG STACK="fastapi==0.115"
-RUN AEGIS_VAULT=/vault python src/ingest.py "$STACK"
 
-# ---------- Stage 2: runtime (air-gap) — serve only, no network needed ----------
-FROM python:3.12-slim AS runtime
+FROM python:3.12-slim
+ARG STACK
 WORKDIR /app
-COPY src/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY src/ ./src/
-COPY --from=builder /vault /vault
-ENV AEGIS_VAULT=/vault AEGIS_OFFLINE=1
+# Embedding model + vault baked into the image so runtime is offline.
+ENV FASTEMBED_CACHE_PATH=/models AEGIS_VAULT=/vault
+COPY pyproject.toml ./
+COPY src ./src
+RUN pip install --no-cache-dir ".[semantic]" \
+ && python -c "from fastembed import TextEmbedding; TextEmbedding()" \
+ && aegis ingest "$STACK" --vault /vault
+
 EXPOSE 8080
-# Bind 0.0.0.0 inside the container; restrict exposure from the host instead, e.g.:
-#   docker run -p 127.0.0.1:8080:8080 aegis-docs
-# For true air-gap, run with no outbound network, e.g.: docker run --network none ...
-CMD ["uvicorn", "app:app", "--app-dir", "src", "--host", "0.0.0.0", "--port", "8080"]
+# LLM judge is OFF by default (BM25 + embeddings + the calling agent do the work).
+# Enable later by pointing at a separate LLM container:
+#   aegis serve --llm true --llm-host http://ollama:11434 --llm-model qwen2.5:7b-instruct
+# Restrict host exposure: docker run -p 127.0.0.1:8080:8080 aegis-docs
+# True air-gap: docker run --network none ... (docs + model are already inside)
+CMD ["aegis", "serve", "--host", "0.0.0.0", "--port", "8080", "--vault", "/vault", "--offline"]

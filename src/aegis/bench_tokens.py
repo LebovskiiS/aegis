@@ -36,8 +36,8 @@ doc = httpx.get(DOC_URL, timeout=20, follow_redirects=True).text
 # 2) Point Aegis at a fresh temp vault and index this doc.
 tmp = Path(tempfile.mkdtemp())
 os.environ["AEGIS_VAULT"] = str(tmp)
-import ingest  # noqa: E402  (after AEGIS_VAULT is set)
-import index  # noqa: E402
+from aegis import ingest  # noqa: E402  (after AEGIS_VAULT is set)
+from aegis import index  # noqa: E402
 
 (tmp / "lib" / "v").mkdir(parents=True)
 (tmp / "lib" / "v" / "doc.md").write_text(doc, encoding="utf-8")

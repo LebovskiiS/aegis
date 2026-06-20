@@ -15,9 +15,11 @@ services:
     image: aegis-docs
     ports:
       - "127.0.0.1:8080:8080"        # loopback only — never expose publicly
-    environment:
-      AEGIS_OFFLINE: "1"             # no network at runtime (air-gap)
-      AEGIS_JUDGE: "0"               # LLM judge off (enable only with 7b+ on a real box)
+    # LLM judge OFF by default. To enable, point at the capped ollama service below:
+    #   command: ["aegis","serve","--host","0.0.0.0","--port","8080","--vault","/vault",
+    #             "--offline","--llm","true","--llm-host","http://ollama:11434",
+    #             "--llm-model","qwen2.5:7b-instruct","--threads","2"]
+    command: ["aegis","serve","--host","0.0.0.0","--port","8080","--vault","/vault","--offline","--llm","false"]
     mem_limit: 1g                    # hard RAM cap — cannot eat the machine
     memswap_limit: 1g                # no swap blow-up
     cpus: "1.0"                      # at most 1 CPU

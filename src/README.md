@@ -1,45 +1,53 @@
 # Aegis Docs — core (MVP)
 
-A service that returns Claude a **pointer** to the relevant documentation block
-for the libraries in the project's stack. Corpus traversal happens locally (0 Claude tokens).
+A service that returns Claude a **pointer + snippet** for the libraries in a project's
+stack. Corpus traversal happens locally (0 Claude tokens). Ships as a pip package with
+an `aegis` CLI.
 
 ## Layers (degrade gracefully)
-1. **BM25** (SQLite FTS5, built-in) — required, always works.
-2. **Vector** (fastembed) — optional, auto-enabled when installed.
-3. **Query rewriter** (Ollama) — optional, fail-safe (no Ollama -> raw query).
+1. **BM25** (SQLite FTS5, built-in) — always on.
+2. **Vector** (fastembed) — install with `[semantic]`; results ranked by cosine.
+3. **LLM judge** (Ollama) — **OFF by default**; needs a 7b+ model. Small models grade
+   unreliably; rely on cosine + the calling agent.
 
-## Run (local)
+## Install
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt          # lightweight core
-# (optional) pip install fastembed numpy  # semantics
-
-# index the stack
-AEGIS_VAULT=./vault python ingest.py "fastapi==0.115"
-
-# service
-AEGIS_VAULT=./vault uvicorn app:app --port 8080
+pip install '.[semantic]'      # service + embeddings (recommended)
+# pip install .                # BM25-only (no embeddings)
 ```
 
-## Check
+## Run (CLI)
 ```bash
-curl -s localhost:8080/health
-curl -s -X POST localhost:8080/locate \
-  -H 'content-type: application/json' \
-  -d '{"query":"how to stream a response","lib":"fastapi"}'
+aegis ingest "fastapi==0.115" --vault ./vault    # fetch + index docs
+aegis serve --vault ./vault                       # start service (no LLM)
+
+aegis locate "how do I stream a response" --lib fastapi   # query it
+aegis health
+aegis libs
+aegis add fastapi --version 0.115                 # index a lib on demand (connected mode)
 ```
-Response: `{file, anchor, lines, why, source}` -> Claude reads exactly those lines.
+
+### LLM judge toggle (`--llm true|false`, default false)
+```bash
+# enable later, pointing at a SEPARATE, capped LLM container:
+aegis serve --llm true --llm-host http://localhost:11434 \
+            --llm-model qwen2.5:7b-instruct --threads 2
+```
+`--threads` caps model CPU; the model also unloads after each call (frees RAM).
+
+## HTTP API (what the agent calls)
+```
+GET  /health   GET /libs
+POST /locate  {query, lib?, version?}  -> {found, results:[{anchor,file,lines,snippet,score,grade}]}
+POST /add     {lib, version?}          (connected mode only)
+```
+
+## Docker
+```bash
+docker compose up --build        # capped (mem 1g, cpu 1), loopback only, no LLM
+```
+The image bakes docs + the embedding model so the container runs offline.
 
 ## For the project's CLAUDE.md
-```md
-## Documentation (Aegis Docs)
-Don't guess library APIs - ask the local service:
-  curl -s -X POST http://localhost:8080/locate -d '{"query":"<question>","lib":"<lib>"}'
-It returns {file, lines}. Read exactly those lines and use them.
-```
-
-## Architecture (two containers, production)
-- `aegis-indexer` — fetches docs + builds the index (has internet, runs occasionally).
-- `aegis-server` — serves `/locate` (isolated, no egress, always on).
-
-They share a store; the indexer writes, the server reads. The MVP collapses to one container.
+See `claude-snippet.md`.

@@ -20,11 +20,11 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-import ingest as ingest_mod
-from index import Index
-from judge import grade_many
-from query_rewriter import rewrite
-from security import LIB_PATTERN, MAX_QUERY_LEN, VERSION_PATTERN, sanitize_query
+from . import ingest as ingest_mod
+from .index import Index
+from .judge import grade_many
+from .query_rewriter import rewrite
+from .security import LIB_PATTERN, MAX_QUERY_LEN, VERSION_PATTERN, sanitize_query
 
 _index = Index()
 SNIPPET_MAX = int(os.getenv("AEGIS_SNIPPET_MAX", "1500"))
