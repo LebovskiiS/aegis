@@ -24,8 +24,10 @@ Response:
   "results": [ {"anchor": "...", "file": "...", "lines": "20-39",
                 "snippet": "...", "score": 0.81, "grade": 9}, ... ] }
 ```
-- `results` are best-first. Each has `score` (0-1 cosine) and `grade` (1-10 from the local
-  judge, when enabled): `grade` 9-10 = trust; mid = relevant-ish; low = probably not it.
+- `results` are best-first by relevance. Each has `score` (0-1 cosine). `grade` (1-10)
+  appears only if the optional LLM judge is enabled (OFF by default — small local models
+  grade unreliably). **Judge relevance yourself:** read the top `snippet` and check it
+  answers the question; `score` is a hint, not proof.
 - Use the top result's `snippet`. Need more context? `Read` exactly `file` at `lines`
   (do NOT read the whole file).
 - `found:false` (or only low grades/scores) -> the answer likely isn't in the docs;

@@ -28,7 +28,9 @@ import httpx
 
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
 JUDGE_MODEL = os.getenv("AEGIS_JUDGE_MODEL", os.getenv("AEGIS_REWRITE_MODEL", "qwen2.5:1.5b-instruct"))
-JUDGE_ENABLED = os.getenv("AEGIS_JUDGE", "1") not in ("0", "false", "False")
+# Default OFF: small local models (<=3b) grade relevance unreliably (tested 1.5b/3b
+# both rate perfect matches 1-2/10). Enable only with a capable model (7b+).
+JUDGE_ENABLED = os.getenv("AEGIS_JUDGE", "0") not in ("0", "false", "False")
 JUDGE_TIMEOUT = float(os.getenv("AEGIS_JUDGE_TIMEOUT", "8.0"))
 
 _SECURITY = (
