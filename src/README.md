@@ -10,11 +10,21 @@ an `aegis` CLI.
 3. **LLM judge** (Ollama) — **OFF by default**; needs a 7b+ model. Small models grade
    unreliably; rely on cosine + the calling agent.
 
-## Install
+## Install (macOS / Windows / Linux)
+
+### Docker — pull from the registry (any OS, recommended)
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install '.[semantic]'      # service + embeddings (recommended)
-# pip install .                # BM25-only (no embeddings)
+docker pull ghcr.io/<owner>/aegis-docs:latest          # multi-arch: amd64 + arm64
+docker run -p 127.0.0.1:8080:8080 ghcr.io/<owner>/aegis-docs:latest
+```
+The same image runs on Intel/AMD and Apple Silicon/ARM.
+
+### pip (any OS with Python 3.10+)
+```bash
+python3 -m venv .venv
+. .venv/bin/activate                  # Windows: .venv\Scripts\activate
+pip install '.[semantic]'             # service + embeddings (recommended)
+# pip install .                       # BM25-only
 ```
 
 ## Run (CLI)

@@ -177,7 +177,7 @@ def ingest(stack: list[tuple[str, str]]) -> dict:
         doc_path = doc_dir / "doc.md"
         doc_path.write_text(md, encoding="utf-8")
         sha = hashlib.sha256(md.encode("utf-8")).hexdigest()
-        rel = str(doc_path.relative_to(VAULT))
+        rel = doc_path.relative_to(VAULT).as_posix()  # forward slashes on every OS
 
         n = 0
         for ch in chunk_markdown(md):
@@ -224,7 +224,7 @@ def add_one(lib: str, version: str = "latest") -> dict:
     doc_path = doc_dir / "doc.md"
     doc_path.write_text(md, encoding="utf-8")
     sha = hashlib.sha256(md.encode("utf-8")).hexdigest()
-    rel = str(doc_path.relative_to(VAULT))
+    rel = doc_path.relative_to(VAULT).as_posix()  # forward slashes on every OS
 
     cid = max((c["id"] for c in existing), default=-1) + 1
     n = 0
