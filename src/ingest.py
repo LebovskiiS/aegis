@@ -200,6 +200,51 @@ def ingest(stack: list[tuple[str, str]]) -> dict:
     return meta
 
 
+def add_one(lib: str, version: str = "latest") -> dict:
+    """Append a single library to an existing vault (connected/dev mode).
+
+    Used by POST /add so an agent can request docs on demand. Skips if already
+    indexed. Forbidden in air-gap (the caller guards on AEGIS_OFFLINE).
+    """
+    VAULT.mkdir(parents=True, exist_ok=True)
+    chunks_path = VAULT / "chunks.jsonl"
+    meta_path = VAULT / "meta.json"
+    existing = (
+        [json.loads(l) for l in chunks_path.read_text(encoding="utf-8").splitlines() if l.strip()]
+        if chunks_path.exists()
+        else []
+    )
+    meta = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {"libs": [], "files": {}}
+    if any(m["lib"] == lib and m["version"] == version for m in meta["libs"]):
+        return meta  # already indexed
+
+    md, source = fetch_doc(lib)
+    doc_dir = VAULT / lib / version
+    doc_dir.mkdir(parents=True, exist_ok=True)
+    doc_path = doc_dir / "doc.md"
+    doc_path.write_text(md, encoding="utf-8")
+    sha = hashlib.sha256(md.encode("utf-8")).hexdigest()
+    rel = str(doc_path.relative_to(VAULT))
+
+    cid = max((c["id"] for c in existing), default=-1) + 1
+    n = 0
+    for ch in chunk_markdown(md):
+        ch.update({"id": cid, "lib": lib, "version": version, "file": rel, "source": source})
+        existing.append(ch)
+        cid += 1
+        n += 1
+    meta["libs"].append(
+        {"lib": lib, "version": version, "source": source, "file": rel, "sha256": sha, "chunks": n}
+    )
+    meta["files"][rel] = sha
+
+    chunks_path.write_text(
+        "\n".join(json.dumps(c, ensure_ascii=False) for c in existing), encoding="utf-8"
+    )
+    meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+    return meta
+
+
 def verify_integrity() -> list[str]:
     """Compare file sha256 against meta.json. Return the list of mismatches (empty = ok)."""
     meta_path = VAULT / "meta.json"
