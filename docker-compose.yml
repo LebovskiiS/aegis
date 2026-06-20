@@ -1,0 +1,28 @@
+# Aegis Docs — local run with hard resource caps.
+#
+# The aegis-server is light (~360 MB: FastAPI + BM25 + embeddings). The heavy part
+# is the OPTIONAL LLM judge (Ollama 7b+), which is intentionally NOT run here — it
+# holds ~5-6 GB RAM and should live on dedicated hardware, not a laptop.
+#
+#   docker compose up --build        # build (fetches docs) + run, capped
+#   docker compose down
+services:
+  aegis-server:
+    build:
+      context: .
+      args:
+        STACK: "fastapi==0.115"      # docs baked at build time
+    image: aegis-docs
+    ports:
+      - "127.0.0.1:8080:8080"        # loopback only — never expose publicly
+    environment:
+      AEGIS_OFFLINE: "1"             # no network at runtime (air-gap)
+      AEGIS_JUDGE: "0"               # LLM judge off (enable only with 7b+ on a real box)
+    mem_limit: 1g                    # hard RAM cap — cannot eat the machine
+    memswap_limit: 1g                # no swap blow-up
+    cpus: "1.0"                      # at most 1 CPU
+    restart: unless-stopped
+
+# To use the LLM judge, run Ollama as a SEPARATE, capped service (ideally on another
+# host), point AEGIS_JUDGE=1 + AEGIS_JUDGE_MODEL + OLLAMA_HOST at it, and give it its
+# own mem_limit. Do not co-locate a 7b model with a laptop workload.
