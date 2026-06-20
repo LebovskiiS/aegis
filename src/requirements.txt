@@ -1,0 +1,13 @@
+# --- Core (lightweight, required) ---
+fastapi
+uvicorn[standard]
+httpx
+pydantic>=2
+
+# --- Semantic layer (optional; auto-enabled when present) ---
+# pip install fastembed numpy
+# fastembed
+# numpy
+
+# --- Query rewriter (optional; requires a running Ollama) ---
+# Install Ollama separately: https://ollama.com  +  ollama pull qwen2.5:3b-instruct

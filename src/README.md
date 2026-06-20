@@ -1,0 +1,45 @@
+# Aegis Docs — core (MVP)
+
+A service that returns Claude a **pointer** to the relevant documentation block
+for the libraries in the project's stack. Corpus traversal happens locally (0 Claude tokens).
+
+## Layers (degrade gracefully)
+1. **BM25** (SQLite FTS5, built-in) — required, always works.
+2. **Vector** (fastembed) — optional, auto-enabled when installed.
+3. **Query rewriter** (Ollama) — optional, fail-safe (no Ollama -> raw query).
+
+## Run (local)
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt          # lightweight core
+# (optional) pip install fastembed numpy  # semantics
+
+# index the stack
+AEGIS_VAULT=./vault python ingest.py "fastapi==0.115"
+
+# service
+AEGIS_VAULT=./vault uvicorn app:app --port 8080
+```
+
+## Check
+```bash
+curl -s localhost:8080/health
+curl -s -X POST localhost:8080/locate \
+  -H 'content-type: application/json' \
+  -d '{"query":"how to stream a response","lib":"fastapi"}'
+```
+Response: `{file, anchor, lines, why, source}` -> Claude reads exactly those lines.
+
+## For the project's CLAUDE.md
+```md
+## Documentation (Aegis Docs)
+Don't guess library APIs - ask the local service:
+  curl -s -X POST http://localhost:8080/locate -d '{"query":"<question>","lib":"<lib>"}'
+It returns {file, lines}. Read exactly those lines and use them.
+```
+
+## Architecture (two containers, production)
+- `aegis-indexer` — fetches docs + builds the index (has internet, runs occasionally).
+- `aegis-server` — serves `/locate` (isolated, no egress, always on).
+
+They share a store; the indexer writes, the server reads. The MVP collapses to one container.

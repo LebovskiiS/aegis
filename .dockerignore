@@ -1,0 +1,6 @@
+.venv
+vault
+**/__pycache__
+*.pyc
+*.md
+!src/README.md
