@@ -22,8 +22,12 @@ from pydantic import BaseModel, Field
 import ingest as ingest_mod
 from index import Index
 from query_rewriter import rewrite
+from judge import grade
 
 _index = Index()
+SNIPPET_MAX = int(os.getenv("AEGIS_SNIPPET_MAX", "1500"))
+MIN_SCORE = float(os.getenv("AEGIS_MIN_SCORE", "0.35"))
+MIN_GRADE = int(os.getenv("AEGIS_MIN_GRADE", "4"))
 
 
 class LocateRequest(BaseModel):
@@ -37,10 +41,13 @@ class Pointer(BaseModel):
     file: str | None = None
     anchor: str | None = None
     lines: str | None = None
+    snippet: str | None = None
     why: str | None = None
     source: str | None = None
     lib: str | None = None
     version: str | None = None
+    score: float | None = None
+    grade: int | None = None
     rewritten: bool | None = None
 
 
@@ -80,18 +87,34 @@ def locate(req: LocateRequest) -> Pointer:
     if not hits:
         return Pointer(found=False, rewritten=plan.rewritten)
     top = hits[0]
+    score = top.get("score")
+    g = grade(req.query, top["text"])  # LLM relevance 1-10, or None (fail-safe)
+
+    # Confidence gate: prefer the LLM grade if available, else fall back to cosine.
+    if g is not None:
+        if g < MIN_GRADE:
+            return Pointer(found=False, score=score, grade=g, rewritten=plan.rewritten)
+    elif score is not None and score < MIN_SCORE:
+        return Pointer(found=False, score=score, rewritten=plan.rewritten)
+
     why = next(
         (ln for ln in top["text"].splitlines() if ln.strip() and not ln.startswith("#")),
         top["anchor"],
     )
+    snippet = top["text"]
+    if len(snippet) > SNIPPET_MAX:
+        snippet = snippet[:SNIPPET_MAX].rstrip() + "\n... (truncated; read more via file + lines)"
     return Pointer(
         found=True,
         file=top["file"],
         anchor=top["anchor"],
         lines=f'{top["start_line"]}-{top["end_line"]}',
+        snippet=snippet,
         why=why[:160],
         source=top["source"],
         lib=top["lib"],
         version=top["version"],
+        score=score,
+        grade=g,
         rewritten=plan.rewritten,
     )
