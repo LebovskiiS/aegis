@@ -6,8 +6,10 @@ so it stays light enough to ship via Homebrew / pipx.
 
 Run the engine (container — needs Docker):
   aegis doctor                                 # check Docker + image are ready
-  aegis up                                     # pull + run the engine on 127.0.0.1:8080
-  aegis status | aegis logs -f | aegis down    # lifecycle
+  aegis up [--port N] [--bind 0.0.0.0]         # pull + run; forward host port -> 8080
+  aegis status                                 # state, health, image, forwarded ports
+  aegis logs -f | aegis stats | aegis restart  # inspect / live usage / restart
+  aegis exec [cmd] | aegis down                # shell into the container / tear down
 
 Local / dev (run the engine in-process — needs the [server] extra):
   aegis init                                   # write an aegis.yaml config template
@@ -94,13 +96,19 @@ def _serve(a: argparse.Namespace) -> None:
 def _up(a: argparse.Namespace) -> None:
     from aegis import container
 
-    container.up(image=a.image, name=a.name, port=a.port, pull=not a.no_pull)
+    container.up(image=a.image, name=a.name, port=a.port, bind=a.bind, pull=not a.no_pull)
 
 
 def _down(a: argparse.Namespace) -> None:
     from aegis import container
 
     container.down(name=a.name)
+
+
+def _restart(a: argparse.Namespace) -> None:
+    from aegis import container
+
+    container.restart(name=a.name)
 
 
 def _status(a: argparse.Namespace) -> None:
@@ -113,6 +121,18 @@ def _logs(a: argparse.Namespace) -> None:
     from aegis import container
 
     container.logs(name=a.name, follow=a.follow, tail=a.tail)
+
+
+def _stats(a: argparse.Namespace) -> None:
+    from aegis import container
+
+    container.stats(name=a.name)
+
+
+def _exec(a: argparse.Namespace) -> None:
+    from aegis import container
+
+    container.exec_(name=a.name, cmd=a.cmd or None)
 
 
 def _doctor(a: argparse.Namespace) -> None:
@@ -219,7 +239,8 @@ def main() -> None:
     up = sub.add_parser("up", help="pull + run the engine container")
     up.add_argument("--image", default=DEFAULT_IMAGE, help="engine image (or set AEGIS_IMAGE)")
     up.add_argument("--name", default=DEFAULT_NAME)
-    up.add_argument("--port", type=int, default=8080)
+    up.add_argument("--port", type=int, default=8080, help="host port to forward to container 8080")
+    up.add_argument("--bind", default="127.0.0.1", help="host interface to bind (default loopback)")
     up.add_argument("--no-pull", action="store_true", help="use the local image, don't pull")
     up.set_defaults(func=_up)
 
@@ -227,7 +248,11 @@ def main() -> None:
     dn.add_argument("--name", default=DEFAULT_NAME)
     dn.set_defaults(func=_down)
 
-    stt = sub.add_parser("status", help="show the engine container state")
+    rs = sub.add_parser("restart", help="restart the engine container in place")
+    rs.add_argument("--name", default=DEFAULT_NAME)
+    rs.set_defaults(func=_restart)
+
+    stt = sub.add_parser("status", help="show container state, health, image, ports")
     stt.add_argument("--name", default=DEFAULT_NAME)
     stt.set_defaults(func=_status)
 
@@ -236,6 +261,15 @@ def main() -> None:
     lg.add_argument("-f", "--follow", action="store_true")
     lg.add_argument("--tail", default="50")
     lg.set_defaults(func=_logs)
+
+    stat = sub.add_parser("stats", help="show container CPU / memory / net usage")
+    stat.add_argument("--name", default=DEFAULT_NAME)
+    stat.set_defaults(func=_stats)
+
+    ex = sub.add_parser("exec", help="run a command inside the container (default: shell)")
+    ex.add_argument("--name", default=DEFAULT_NAME)
+    ex.add_argument("cmd", nargs=argparse.REMAINDER, help="command to run (default: sh)")
+    ex.set_defaults(func=_exec)
 
     dr = sub.add_parser("doctor", help="check Docker + image are ready")
     dr.add_argument("--image", default=DEFAULT_IMAGE)
