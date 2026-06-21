@@ -22,31 +22,47 @@ log, signed docs, access control, hardened container.
 
 ---
 
-## Install (macOS / Windows / Linux)
+## Install
 
-### Docker (recommended) — one multi-arch image for every OS
+Aegis is two layers: a thin **CLI** (control plane) you install on your machine, and
+the **engine** (indexer + service) that runs in a container the CLI drives. Heavy deps
+live in the image, never on your host — so the CLI stays light enough for Homebrew/pipx.
+
+### 1. The CLI (control plane)
 ```bash
-docker pull ghcr.io/<owner>/aegis-docs:latest          # amd64 + arm64
-docker run -p 127.0.0.1:8080:8080 ghcr.io/<owner>/aegis-docs:latest
+brew install LebovskiiS/aegis/aegis   # macOS / Linux — Homebrew tap (see packaging/homebrew/)
+pipx install aegis-docs               # any OS with Python 3.10+
 ```
 
-### pip (any OS, Python 3.10+)
+### 2. The engine (container)
 ```bash
-python3 -m venv .venv
-. .venv/bin/activate                  # Windows: .venv\Scripts\activate
-pip install '.[semantic]'             # service + embeddings (recommended)
+aegis doctor                          # check Docker is ready
+aegis up                              # pull + run the engine on 127.0.0.1:8080 (docs baked in)
 ```
+One multi-arch image (`lebovskiis/aegis` on Docker Hub, amd64 + arm64) for every OS.
+
+### Local dev — no Docker, engine in-process
+```bash
+make demo                             # venv + deps + index a stack + serve — one command
+```
+Run `make help` for every target.
 
 ---
 
 ## Quickstart
 
+**Container (recommended) — the CLI drives the engine:**
+```bash
+aegis up                                       # pull + run the engine (docs baked in)
+aegis locate "how do I stream a response" --lib fastapi
+aegis status        # | aegis logs -f | aegis down
+```
+
+**Local / dev — engine in-process (no Docker):**
 ```bash
 aegis init                            # write aegis.yaml (config template)
 aegis ingest "fastapi==0.115"         # fetch + index docs
 aegis serve --config aegis.yaml       # start the service
-
-# the agent (or you) query it:
 aegis locate "how do I stream a response" --lib fastapi
 ```
 Wire it into your project's `CLAUDE.md` using [claude-snippet.md](claude-snippet.md) so the
@@ -77,6 +93,9 @@ Load it: `aegis serve --config aegis.yaml`.
 
 | Command | What it does |
 |---------|--------------|
+| `aegis doctor` | check Docker + the engine image are ready |
+| `aegis up` | pull + run the engine container (control plane) |
+| `aegis down` / `aegis status` / `aegis logs` | engine lifecycle |
 | `aegis init` | write the `aegis.yaml` template |
 | `aegis ingest "fastapi==0.115"` | fetch + index docs into the vault |
 | `aegis serve --config aegis.yaml` | run the HTTP service |

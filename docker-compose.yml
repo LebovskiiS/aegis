@@ -12,9 +12,9 @@ services:
       context: .
       args:
         STACK: "fastapi==0.115"      # docs baked at build time
-    # Pulled from the registry on `docker compose pull` (multi-arch: macOS / Windows /
-    # Linux). Replace OWNER; or keep the `build` block below to build locally instead.
-    image: ghcr.io/OWNER/aegis-docs:latest
+    # Pulled from Docker Hub on `docker compose pull` (multi-arch: macOS / Windows /
+    # Linux); or keep the `build` block above to build locally instead.
+    image: lebovskiis/aegis:latest
     ports:
       - "127.0.0.1:8080:8080"        # loopback only — never expose publicly
     # LLM judge OFF by default. To enable, point at the capped ollama service below:

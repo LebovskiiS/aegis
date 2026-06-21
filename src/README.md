@@ -14,8 +14,8 @@ an `aegis` CLI.
 
 ### Docker — pull from the registry (any OS, recommended)
 ```bash
-docker pull ghcr.io/<owner>/aegis-docs:latest          # multi-arch: amd64 + arm64
-docker run -p 127.0.0.1:8080:8080 ghcr.io/<owner>/aegis-docs:latest
+docker pull lebovskiis/aegis:latest                    # multi-arch: amd64 + arm64
+docker run -p 127.0.0.1:8080:8080 lebovskiis/aegis:latest
 ```
 The same image runs on Intel/AMD and Apple Silicon/ARM.
 
