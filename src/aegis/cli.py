@@ -1,6 +1,15 @@
 """Aegis Docs CLI.
 
-Setup:
+The CLI is the thin *control plane*: it drives the engine, which runs in a
+container (the heavy FastAPI + embeddings + vault). It never imports the engine,
+so it stays light enough to ship via Homebrew / pipx.
+
+Run the engine (container — needs Docker):
+  aegis doctor                                 # check Docker + image are ready
+  aegis up                                     # pull + run the engine on 127.0.0.1:8080
+  aegis status | aegis logs -f | aegis down    # lifecycle
+
+Local / dev (run the engine in-process — needs the [server] extra):
   aegis init                                   # write an aegis.yaml config template
   aegis serve --config aegis.yaml              # run with all settings from the file
   aegis ingest "fastapi==0.115" [--vault DIR]  # fetch + index docs
@@ -30,6 +39,8 @@ import secrets
 from pathlib import Path
 
 DEFAULT_URL = os.getenv("AEGIS_URL", "http://127.0.0.1:8080")
+DEFAULT_IMAGE = os.getenv("AEGIS_IMAGE", "lebovskiis/aegis:latest")
+DEFAULT_NAME = os.getenv("AEGIS_CONTAINER", "aegis")
 
 
 def _bool(v: str) -> bool:
@@ -77,6 +88,37 @@ def _serve(a: argparse.Namespace) -> None:
     mode = f"LLM judge ON ({os.environ.get('AEGIS_JUDGE_MODEL', 'default')})" if judge else "no LLM (cosine + agent)"
     print(f"aegis serve -> http://{host}:{port}  [{mode}]")
     uvicorn.run("aegis.app:app", host=host, port=port, log_level="warning")
+
+
+# --- control plane (drive the engine container; never imports the engine) ---
+def _up(a: argparse.Namespace) -> None:
+    from aegis import container
+
+    container.up(image=a.image, name=a.name, port=a.port, pull=not a.no_pull)
+
+
+def _down(a: argparse.Namespace) -> None:
+    from aegis import container
+
+    container.down(name=a.name)
+
+
+def _status(a: argparse.Namespace) -> None:
+    from aegis import container
+
+    container.status(name=a.name)
+
+
+def _logs(a: argparse.Namespace) -> None:
+    from aegis import container
+
+    container.logs(name=a.name, follow=a.follow, tail=a.tail)
+
+
+def _doctor(a: argparse.Namespace) -> None:
+    from aegis import container
+
+    container.doctor(image=a.image, name=a.name)
 
 
 def _init(a: argparse.Namespace) -> None:
@@ -172,6 +214,33 @@ def _apikey(a):
 def main() -> None:
     p = argparse.ArgumentParser(prog="aegis", description="Aegis Docs — local docs for AI agents")
     sub = p.add_subparsers(dest="cmd", required=True)
+
+    # --- control plane (drive the engine container) ---
+    up = sub.add_parser("up", help="pull + run the engine container")
+    up.add_argument("--image", default=DEFAULT_IMAGE, help="engine image (or set AEGIS_IMAGE)")
+    up.add_argument("--name", default=DEFAULT_NAME)
+    up.add_argument("--port", type=int, default=8080)
+    up.add_argument("--no-pull", action="store_true", help="use the local image, don't pull")
+    up.set_defaults(func=_up)
+
+    dn = sub.add_parser("down", help="stop + remove the engine container")
+    dn.add_argument("--name", default=DEFAULT_NAME)
+    dn.set_defaults(func=_down)
+
+    stt = sub.add_parser("status", help="show the engine container state")
+    stt.add_argument("--name", default=DEFAULT_NAME)
+    stt.set_defaults(func=_status)
+
+    lg = sub.add_parser("logs", help="show engine container logs")
+    lg.add_argument("--name", default=DEFAULT_NAME)
+    lg.add_argument("-f", "--follow", action="store_true")
+    lg.add_argument("--tail", default="50")
+    lg.set_defaults(func=_logs)
+
+    dr = sub.add_parser("doctor", help="check Docker + image are ready")
+    dr.add_argument("--image", default=DEFAULT_IMAGE)
+    dr.add_argument("--name", default=DEFAULT_NAME)
+    dr.set_defaults(func=_doctor)
 
     ini = sub.add_parser("init", help="write an aegis.yaml config template")
     ini.add_argument("--out", default="aegis.yaml")
