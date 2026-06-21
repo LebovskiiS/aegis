@@ -1,5 +1,6 @@
 .venv/
 vault/
+*.egg-info/
 **/__pycache__/
 *.pyc
 .DS_Store
