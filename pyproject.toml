@@ -7,6 +7,7 @@ name = "aegis-docs"
 version = "0.2.0"
 description = "Air-gapped local documentation service for AI coding agents"
 readme = "src/README.md"
+license = { text = "MIT" }
 requires-python = ">=3.10"
 # Thin control-plane CLI (Homebrew / pipx): drives the engine container + HTTP client +
 # local signing. Light deps only — the heavy engine deps live in the [server]/[semantic]

@@ -13,10 +13,9 @@ class Aegis < Formula
 
   desc "Air-gappable documentation control plane for AI coding agents"
   homepage "https://github.com/LebovskiiS/aegis"
-  url "https://files.pythonhosted.org/packages/source/a/aegis-docs/aegis_docs-0.2.0.tar.gz" # TODO: real PyPI sdist
-  sha256 "0000000000000000000000000000000000000000000000000000000000000000"            # TODO: filled by CI / brew
-  license "Apache-2.0" # TODO: confirm the project license
-  version "0.2.0"
+  url "https://files.pythonhosted.org/packages/b3/26/160a0afcf2b5dec2598e6cbf1088ccf7dc6d9cd5df53e6db8e4a7322d400/aegis_docs-0.2.0.tar.gz"
+  sha256 "976fef00245c8afa3d7bf3f4855221f8c9a963b4e0481a1bedeb35137433cfa6"
+  license "MIT"
 
   depends_on "python@3.12"
 
