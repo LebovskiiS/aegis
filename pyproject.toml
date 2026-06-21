@@ -8,18 +8,22 @@ version = "0.2.0"
 description = "Air-gapped local documentation service for AI coding agents"
 readme = "src/README.md"
 requires-python = ">=3.10"
+# Thin control-plane CLI (Homebrew / pipx): drives the engine container + HTTP client +
+# local signing. Light deps only — the heavy engine deps live in the [server]/[semantic]
+# extras, which ship inside the container image, not in the brew package.
 dependencies = [
-    "fastapi",
-    "uvicorn[standard]",
-    "httpx",
-    "pydantic>=2",
+    "httpx",                 # HTTP client (locate/health/libs/add) + doc fetch
     "cryptography",          # ed25519 signing of the provenance manifest
     "pyyaml",                # aegis.yaml config
 ]
 
 [project.optional-dependencies]
-# Semantic search layer (recommended). Without it the service runs BM25-only.
+# Engine: run the service in-process (and what the container image installs).
+server = ["fastapi", "uvicorn[standard]", "pydantic>=2"]
+# Semantic search layer (recommended for the engine). Without it the service is BM25-only.
 semantic = ["fastembed", "numpy"]
+# Convenience: the full engine (server + semantic) — used by the Docker image.
+engine = ["aegis-docs[server,semantic]"]
 s3 = ["boto3"]                       # ship audit logs to S3
 gcs = ["google-cloud-storage"]       # ship audit logs to GCS
 

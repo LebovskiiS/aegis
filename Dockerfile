@@ -9,7 +9,7 @@ WORKDIR /app
 ENV FASTEMBED_CACHE_PATH=/models AEGIS_VAULT=/vault AEGIS_AUDIT_LOG=/data/audit.log
 COPY pyproject.toml ./
 COPY src ./src
-RUN pip install --no-cache-dir ".[semantic]" \
+RUN pip install --no-cache-dir ".[engine]" \
  && python -c "from fastembed import TextEmbedding; TextEmbedding()" \
  && aegis ingest "$STACK" --vault /vault \
  # non-root runtime user; /data writable for the audit log; /vault stays read-only
