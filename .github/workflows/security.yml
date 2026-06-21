@@ -24,6 +24,11 @@ jobs:
 
       - name: Scan image (Trivy — vulns + misconfig)
         uses: aquasecurity/trivy-action@v0.33.1
+        env:
+          # Pull the vuln DB from the AWS ECR public mirror to avoid GHCR anonymous
+          # rate limits — the usual cause of flaky Trivy failures in CI.
+          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
+          TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db:1
         with:
           image-ref: aegis-docs:scan
           format: table
