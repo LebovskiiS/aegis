@@ -141,6 +141,12 @@ def _doctor(a: argparse.Namespace) -> None:
     container.doctor(image=a.image, name=a.name)
 
 
+def _mcp(a: argparse.Namespace) -> None:
+    from aegis import mcp_server
+
+    mcp_server.serve(url=a.url)
+
+
 def _init(a: argparse.Namespace) -> None:
     from aegis import config
 
@@ -275,6 +281,10 @@ def main() -> None:
     dr.add_argument("--image", default=DEFAULT_IMAGE)
     dr.add_argument("--name", default=DEFAULT_NAME)
     dr.set_defaults(func=_doctor)
+
+    mc = sub.add_parser("mcp", help="run an MCP server (stdio) for Claude/Cursor")
+    mc.add_argument("--url", default=DEFAULT_URL, help="engine URL to proxy /locate to")
+    mc.set_defaults(func=_mcp)
 
     ini = sub.add_parser("init", help="write an aegis.yaml config template")
     ini.add_argument("--out", default="aegis.yaml")
