@@ -27,6 +27,7 @@ semantic = ["fastembed", "numpy"]
 engine = ["aegis-docs[server,semantic]"]
 s3 = ["boto3"]                       # ship audit logs to S3
 gcs = ["google-cloud-storage"]       # ship audit logs to GCS
+test = ["pytest"]                    # test suite (runs on the thin core, no engine deps)
 
 [project.scripts]
 aegis = "aegis.cli:main"
