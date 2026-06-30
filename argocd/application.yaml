@@ -1,0 +1,23 @@
+# Argo CD Application: watch this repo's deploy/ folder and keep the cluster in sync.
+# Apply it ONCE by hand (it lives outside deploy/ so Argo doesn't manage itself):
+#   kubectl apply -f argocd/application.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: aegis
+  namespace: argocd            # where Argo CD itself runs
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/LebovskiiS/aegis   # public repo — no creds needed
+    targetRevision: main                           # branch/tag Argo tracks
+    path: deploy                                   # the folder Argo applies (kustomize)
+  destination:
+    server: https://kubernetes.default.svc         # the same (minikube) cluster
+    namespace: aegis
+  syncPolicy:
+    automated:
+      prune: true            # delete resources removed from git
+      selfHeal: true         # revert manual drift in the cluster
+    syncOptions:
+      - CreateNamespace=true # create the `aegis` namespace on first sync

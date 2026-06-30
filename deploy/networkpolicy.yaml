@@ -1,0 +1,18 @@
+# Provable zero-egress: the engine serves from its baked vault and needs no network.
+# This is the air-gap showcase — egress is denied entirely.
+#
+# NOTE: minikube's default CNI does NOT enforce NetworkPolicy. To actually enforce it:
+#   minikube start --cni=calico
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: aegis-zero-egress
+  labels: { app: aegis }
+spec:
+  podSelector:
+    matchLabels: { app: aegis }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - ports:                      # allow callers (and kubelet probes) to reach the API
+        - { port: 8080, protocol: TCP }
+  egress: []                      # zero outbound traffic

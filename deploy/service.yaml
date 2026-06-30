@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: aegis
+  labels: { app: aegis }
+spec:
+  type: ClusterIP                 # internal only; reach it with `kubectl port-forward svc/aegis 8080:8080`
+  selector: { app: aegis }
+  ports:
+    - { name: http, port: 8080, targetPort: http }
